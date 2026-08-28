@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Join Charte Cars | Private Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div class="bg-[#003399] p-8 text-center text-white">
+            <h1 class="text-3xl font-black italic mb-2">CHARTE CARS</h1>
+            <p class="text-blue-200 text-sm">Unlock the private car marketplace</p>
+        </div>
+
+        <div class="p-8 text-center">
+            <div class="mb-6">
+                <span class="text-5xl font-black text-slate-800">500</span>
+                <span class="text-xl font-bold text-slate-500 uppercase">ETB</span>
+                <p class="text-gray-500 mt-2">One-time payment for lifetime access</p>
+            </div>
+
+            <ul class="text-left space-y-3 mb-8 text-sm text-gray-600">
+                <li class="flex items-center">✅ View seller phone numbers</li>
+                <li class="flex items-center">✅ Full car detail pages</li>
+                <li class="flex items-center">✅ Contact owners directly</li>
+                <li class="flex items-center">✅ No hidden agent fees</li>
+            </ul>
+
+            <!-- For now, this is a placeholder. Later we connect Chapa/Telebirr -->
+            <button onclick="handlePayment()" class="w-full bg-[#003399] text-white font-black py-4 rounded-xl shadow-lg hover:bg-blue-800 transition uppercase tracking-widest">
+                Pay with Telebirr / Chapa
+            </button>
+            
+            <p class="mt-4 text-xs text-gray-400">By paying, you agree to our terms of service.</p>
+        </div>
+    </div>
+
+    <script>
+        function handlePayment() {
+            alert("Redirecting to Ethiopian Payment Gateway...");
+            // In the next step, I will give you the code to connect your Chapa account here.
+        }
+    </script>
+</body>
+</html>
