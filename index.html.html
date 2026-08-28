@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charte Cars | Ethiopia's Private Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Video Background Styling */
+        .hero-video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
+        video { min-width: 100%; min-height: 100%; width: auto; height: auto; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: cover; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(0, 51, 153, 0.7), rgba(15, 23, 42, 0.8)); z-index: 10; }
+
+        /* Smooth Card Hover */
+        .car-card:hover { transform: translateY(-5px); transition: 0.3s ease; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <!-- Navigation -->
+    <nav class="relative z-50 flex items-center justify-between px-6 py-4 bg-[#003399] text-white shadow-xl">
+        <div class="text-2xl font-black italic tracking-tighter cursor-pointer" onclick="window.location.reload()">
+            CHARTE <span class="text-blue-300">CARS</span>
+        </div>
+        <div class="hidden md:flex space-x-8 font-bold uppercase text-[11px] tracking-widest">
+            <a href="#" class="hover:text-blue-300 transition">Buy</a>
+            <a href="#" class="hover:text-blue-300 transition">Sell</a>
+            <a href="#" class="hover:text-blue-300 transition">Rent</a>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button id="adminBtn" onclick="adminLogin()" class="text-[10px] border border-white/30 px-3 py-1 rounded opacity-50 hover:opacity-100">Admin Login</button>
+            <a href="list-car.html" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-black text-xs transition shadow-lg">+ LIST A CAR</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="relative h-[75vh] flex items-center justify-center text-center px-4">
+        <div class="hero-video-container">
+            <video autoplay muted loop playsinline poster="https://via.placeholder.com/1920x1080?text=Charte+Cars">
+                <source src="https://assets.mixkit.co/videos/preview/mixkit-fast-car-driving-on-a-road-at-night-40333-large.mp4" type="video/mp4">
+            </video>
+            <div class="overlay"></div>
+        </div>
+        <div class="relative z-20 max-w-4xl">
+            <p class="text-blue-400 font-black tracking-[0.4em] uppercase text-[10px] mb-4">Ethiopia, House by House</p>
+            <h1 class="text-white text-5xl md:text-7xl font-black leading-tight mb-10 uppercase tracking-tighter">
+                Find a car you can <br> <span class="text-blue-400">actually</span> see yourself in.
+            </h1>
+            
+            <!-- Search Bar -->
+            <div class="bg-white/10 backdrop-blur-xl p-2 rounded-2xl flex flex-col md:flex-row w-full gap-2 border border-white/20 shadow-2xl">
+                <select class="flex-1 bg-white p-4 rounded-xl text-gray-700 font-bold focus:outline-none"><option>All Cities</option><option>Addis Ababa</option><option>Hawassa</option></select>
+                <input type="text" placeholder="Min Price (ETB)" class="flex-1 bg-white p-4 rounded-xl text-gray-700 focus:outline-none">
+                <button class="bg-[#003399] hover:bg-blue-800 text-white font-black px-12 py-4 rounded-xl uppercase tracking-widest text-sm transition shadow-lg">Search Cars</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Marketplace Section -->
+    <main class="max-w-7xl mx-auto py-20 px-6">
+        <div class="flex justify-between items-end mb-12">
+            <div>
+                <h2 class="text-3xl font-black text-slate-800 uppercase tracking-tighter">Latest Marketplace</h2>
+                <div class="h-1.5 w-20 bg-blue-600 mt-2"></div>
+            </div>
+            <p id="accessStatus" class="text-xs font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1 rounded">Guest Access</p>
+        </div>
+        
+        <!-- Grid where cars will appear -->
+        <div id="car-grid" class="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <div class="col-span-3 text-center py-20 text-slate-400 animate-pulse font-bold uppercase tracking-widest">
+                Fetching Private Listings...
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-10 text-center">
+        <p class="text-[10px] opacity-40 uppercase tracking-[0.5em]">&copy; 2026 Charte Cars Ethiopia</p>
+    </footer>
+
+    <!-- LOGIC SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // 1. Connection
+        const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1'; 
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        // 2. Admin List (From your previous message)
+        const admins = [
+            'emanuelkirubel@gmail.com', 
+            'chartehomes@gmail.com', 
+            'manuelkirubel@gmail.com',
+            '+251926306560',
+            '+251939804748'
+        ];
+
+        // Check if user is logged in as admin (simulated for now)
+        let isPaidUser = localStorage.getItem('charte_paid') === 'true';
+
+        function adminLogin() {
+            const secret = prompt("Enter Admin Email or Phone:");
+            if (admins.includes(secret)) {
+                localStorage.setItem('charte_paid', 'true');
+                alert("Welcome Admin! All details are now unlocked.");
+                window.location.reload();
+            } else {
+                alert("Access Denied.");
+            }
+        }
+
+        // 3. Load Cars Function
+        async function loadCars() {
+            const { data: cars, error } = await supabaseClient
+                .from('car_listings')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) { console.error(error); return; }
+
+            const container = document.getElementById('car-grid');
+            const statusLabel = document.getElementById('accessStatus');
+            
+            if (isPaidUser) {
+                statusLabel.innerText = "UNLOCKED ACCESS";
+                statusLabel.classList.replace('text-slate-400', 'text-green-600');
+                statusLabel.classList.replace('bg-slate-100', 'bg-green-100');
+            }
+
+            if (cars.length === 0) {
+                container.innerHTML = '<div class="col-span-3 text-center py-10 text-slate-400">No cars found.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            cars.forEach(car => {
+                container.innerHTML += `
+                    <div class="car-card bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200 relative group">
+                        <!-- Ribbon -->
+                        ${car.is_urgent ? '<div class="absolute top-4 right-0 bg-yellow-500 text-white text-[9px] font-black px-5 py-1.5 uppercase z-40 shadow-lg">Urgent</div>' : ''}
+                        ${car.is_sold ? '<div class="absolute top-4 right-0 bg-red-600 text-white text-[9px] font-black px-5 py-1.5 uppercase z-40 shadow-lg">Sold</div>' : ''}
+                        
+                        <div class="h-64 bg-slate-100 overflow-hidden">
+                            <img src="${car.image_url || 'https://via.placeholder.com/600x400?text=Charte+Cars'}" 
+                                 class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                        </div>
+
+                        <div class="p-8">
+                            <p class="text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-2">${car.location}</p>
+                            <h3 class="text-2xl font-black text-slate-800 mb-3 tracking-tighter">${car.name}</h3>
+                            <div class="text-3xl font-black text-[#003399] mb-6">${Number(car.price).toLocaleString()} <span class="text-xs font-normal text-slate-400">ETB</span></div>
+                            
+                            <hr class="mb-6 border-slate-100">
+
+                            ${isPaidUser ? `
+                                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center">
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Seller Contact</p>
+                                        <p class="text-lg font-black text-slate-800">${car.phone_number || 'No Phone'}</p>
+                                    </div>
+                                    <a href="tel:${car.phone_number}" class="bg-green-500 p-3 rounded-full text-white shadow-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 005.474 5.474l.772-1.548a1 1 0 011.06-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            ` : `
+                                <button onclick="window.location.href='join.html'" 
+                                        class="w-full bg-[#003399] text-white font-black py-4 rounded-xl uppercase tracking-widest text-[10px] hover:bg-blue-800 transition shadow-lg">
+                                    Unlock Phone Number (500 ETB)
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        loadCars();
+    </script>
+</body>
+</html>
