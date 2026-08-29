@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charte Cars | List Your Car</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Shown while we check who's asking -->
+    <div id="checking" class="text-slate-400 font-bold text-sm">Checking access...</div>
+
+    <!-- Shown if not logged in / not paid / not admin -->
+    <div id="denied" class="hidden bg-white w-full max-w-md rounded-2xl shadow-xl p-10 text-center">
+        <h1 class="text-xl font-black text-slate-800 mb-2">Membership Required</h1>
+        <p class="text-slate-500 text-sm mb-6">Only paid members can list a car. Join for 500 ETB to unlock listing.</p>
+        <button onclick="window.location.href='join.html'" class="w-full bg-[#003399] text-white font-black py-3 rounded-xl uppercase text-xs shadow-lg mb-3">
+            Join Now — 500 ETB
+        </button>
+        <button onclick="window.location.href='index.html'" class="text-blue-600 font-bold text-xs hover:underline">← Back to Home</button>
+    </div>
+
+    <!-- The actual form, hidden until we confirm paid/admin -->
+    <div id="listForm" class="hidden bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-[#003399] p-6 text-white">
+            <h1 class="text-xl font-bold italic">CHARTE <span class="text-blue-300">CARS</span></h1>
+            <p class="text-xs opacity-70">List your car on the marketplace</p>
+        </div>
+
+        <form id="addCarForm" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Car Name / Model</label>
+                <input type="text" id="name" placeholder="e.g. Toyota Hilux 2023" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Price (ETB)</label>
+                    <input type="number" id="price" placeholder="4,500,000" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Location</label>
+                    <input type="text" id="location" placeholder="Addis Ababa" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Car Photos (up to 15)</label>
+                <input type="file" id="image_file" accept="image/*" multiple class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                <p class="text-[10px] text-gray-400 mt-1">Select multiple photos at once from your gallery or files (max 15).</p>
+                <p id="fileCountMsg" class="text-[10px] font-bold mt-1"></p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Seller Phone Number</label>
+                <input type="text" id="phone" placeholder="+251..." class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Description</label>
+                <textarea id="description" placeholder="Condition, mileage, extra details..." class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" rows="3"></textarea>
+            </div>
+
+            <div class="flex items-center space-x-4 py-2">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" id="is_urgent" class="w-4 h-4 text-blue-600">
+                    <span class="text-sm font-bold text-yellow-600">Mark as URGENT</span>
+                </label>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-[#003399] text-white font-black py-4 rounded-xl uppercase tracking-widest hover:bg-blue-800 transition shadow-lg">
+                Upload to Website
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1';
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        let currentUserId = null;
+
+        async function checkAccess() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            currentUserId = user.id;
+
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('is_admin, is_paid')
+                .eq('id', user.id)
+                .single();
+
+            document.getElementById('checking').classList.add('hidden');
+
+            const allowed = profile && (profile.is_admin || profile.is_paid);
+
+            if (error || !allowed) {
+                document.getElementById('denied').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('listForm').classList.remove('hidden');
+        }
+
+        checkAccess();
+
+        // Show a live count / warning as the seller picks photos
+        document.getElementById('image_file').addEventListener('change', (e) => {
+            const msg = document.getElementById('fileCountMsg');
+            const count = e.target.files.length;
+            if (count > 15) {
+                msg.innerText = `You selected ${count} photos — only the first 15 will be uploaded.`;
+                msg.className = 'text-[10px] font-bold mt-1 text-red-500';
+            } else if (count > 0) {
+                msg.innerText = `${count} photo${count > 1 ? 's' : ''} selected.`;
+                msg.className = 'text-[10px] font-bold mt-1 text-green-600';
+            } else {
+                msg.innerText = '';
+            }
+        });
+
+        const form = document.getElementById('addCarForm');
+        const btn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btn.disabled = true;
+
+            // 1. Upload up to 15 selected photos to Supabase Storage
+            const fileInput = document.getElementById('image_file');
+            const files = Array.from(fileInput.files).slice(0, 15);
+            const uploadedUrls = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                btn.innerText = `UPLOADING PHOTO ${i + 1} OF ${files.length}...`;
+
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${currentUserId}-${Date.now()}-${i}.${fileExt}`;
+
+                const { error: uploadError } = await supabaseClient
+                    .storage
+                    .from('car-images')
+                    .upload(fileName, file);
+
+                if (uploadError) {
+                    alert(`Photo ${i + 1} failed to upload: ` + uploadError.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Upload to Website';
+                    return;
+                }
+
+                const { data: publicUrlData } = supabaseClient
+                    .storage
+                    .from('car-images')
+                    .getPublicUrl(fileName);
+
+                uploadedUrls.push(publicUrlData.publicUrl);
+            }
+
+            btn.innerText = 'SAVING LISTING...';
+
+            // 2. Save the car listing with all uploaded photo URLs
+            //    (image_url keeps the first photo as the "cover" for older code/pages)
+            const carData = {
+                seller_id: currentUserId,
+                name: document.getElementById('name').value,
+                price: document.getElementById('price').value,
+                location: document.getElementById('location').value,
+                image_url: uploadedUrls[0] || '',
+                image_urls: uploadedUrls,
+                phone_number: document.getElementById('phone').value,
+                description: document.getElementById('description').value,
+                is_urgent: document.getElementById('is_urgent').checked
+            };
+
+            const { error } = await supabaseClient
+                .from('car_listings')
+                .insert([carData]);
+
+            if (error) {
+                alert('Error: ' + error.message);
+                btn.disabled = false;
+                btn.innerText = 'Upload to Website';
+            } else {
+                alert('✅ Car listed successfully! Refresh the home page to see it.');
+                form.reset();
+                document.getElementById('fileCountMsg').innerText = '';
+                btn.disabled = false;
+                btn.innerText = 'Upload to Website';
+            }
+        });
+    </script>
+</body>
+</html>
