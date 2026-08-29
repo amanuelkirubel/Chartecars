@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charte Cars | Find Your Dream Car</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .hero-video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
+        video { min-width: 100%; min-height: 100%; width: auto; height: auto; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: cover; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 51, 153, 0.5); z-index: 10; }
+        .blur-locked { filter: blur(6px); user-select: none; pointer-events: none; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <nav class="relative z-50 flex items-center justify-between px-6 py-4 bg-[#003399] text-white shadow-lg">
+        <div class="flex items-center cursor-pointer" onclick="window.location.reload()">
+            <img src="logo.jpg" alt="Charte Cars" class="h-48 w-auto rounded-md">
+        </div>
+        <div class="hidden md:flex space-x-8 font-semibold uppercase text-xs">
+            <a href="#" class="hover:text-blue-200" data-i18n="nav_buy">Buy</a>
+            <a href="list-car.html" class="hover:text-blue-200" data-i18n="nav_sell">Sell</a>
+            <a href="#" class="hover:text-blue-200" data-i18n="nav_rent">Rent</a>
+            <a href="my-listings.html" class="hover:text-blue-200" data-i18n="nav_mylistings">My Listings</a>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button id="langToggle" class="border border-white/40 text-white px-3 py-1.5 rounded text-xs font-bold uppercase hover:bg-white/10">
+                <span id="langLabel">አማርኛ</span>
+            </button>
+            <a href="list-car.html" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-bold text-xs" data-i18n="nav_list_car">+ LIST A CAR</a>
+        </div>
+    </nav>
+
+    <header class="relative h-[60vh] flex items-center justify-center text-center px-4">
+        <div class="hero-video-container">
+            <video autoplay muted loop playsinline><source src="hero-video.mp4" type="video/mp4"></video>
+            <div class="overlay"></div>
+        </div>
+        <div class="relative z-20 max-w-4xl text-white">
+            <h1 class="text-4xl md:text-6xl font-black mb-8 uppercase" data-i18n="hero_title">Find a car you can <br> actually see yourself in.</h1>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto py-16 px-6">
+        <h2 class="text-2xl font-black text-slate-800 mb-8 border-l-4 border-blue-600 pl-4 uppercase" data-i18n="latest_listings">Latest Listings</h2>
+        <div id="car-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center text-gray-400 font-bold py-10 italic" data-i18n="connecting">Connecting to Database...</div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ============================================
+        // LANGUAGE TOGGLE (English / Amharic)
+        // ============================================
+        const translations = {
+            en: {
+                nav_buy: "Buy",
+                nav_sell: "Sell",
+                nav_rent: "Rent",
+                nav_mylistings: "My Listings",
+                nav_list_car: "+ LIST A CAR",
+                hero_title: "Find a car you can <br> actually see yourself in.",
+                latest_listings: "Latest Listings",
+                connecting: "Connecting to Database...",
+                unlock_btn: "Join for 500 ETB to See Price & Contact",
+                seller_contact: "Seller Contact",
+                no_phone: "No phone"
+            },
+            am: {
+                nav_buy: "ግዢ",
+                nav_sell: "ሽያጭ",
+                nav_rent: "ኪራይ",
+                nav_mylistings: "የኔ ዝርዝሮች",
+                nav_list_car: "+ መኪና ዘርዝር",
+                hero_title: "እርስዎ በእውነት ሊታዩበት የሚችሉትን መኪና ያግኙ።",
+                latest_listings: "የቅርብ ጊዜ ዝርዝሮች",
+                connecting: "ከዳታቤዝ ጋር በመገናኘት ላይ...",
+                unlock_btn: "ዋጋ እና ስልክ ለማየት በ500 ብር ይቀላቀሉ",
+                seller_contact: "የሻጭ ስልክ",
+                no_phone: "ስልክ የለም"
+            }
+        };
+
+        let currentLang = localStorage.getItem('cc_lang') || 'en';
+
+        function applyLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('cc_lang', lang);
+            document.getElementById('langLabel').innerText = lang === 'en' ? 'አማርኛ' : 'English';
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.innerHTML = translations[lang][key];
+                }
+            });
+
+            // Re-render car cards so their button/label text matches the chosen language
+            if (window.__lastCars) renderCars(window.__lastCars, window.__canSeeDetails);
+        }
+
+        document.getElementById('langToggle').addEventListener('click', () => {
+            applyLanguage(currentLang === 'en' ? 'am' : 'en');
+        });
+
+        // ============================================
+        // MARKETPLACE LOGIC
+        // ============================================
+        const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1'; 
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        function renderCars(cars, canSeeDetails) {
+            const t = translations[currentLang];
+            const container = document.getElementById('car-grid');
+            container.innerHTML = '';
+            container.removeAttribute('data-i18n');
+
+            cars.forEach(car => {
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200 p-4 text-left">
+                        <img src="${car.image_url || 'https://via.placeholder.com/400x300'}" class="w-full h-48 object-cover rounded-xl mb-4">
+                        <h3 class="text-xl font-black">${car.name}</h3>
+                        <p class="text-sm text-slate-400 font-semibold mb-3">${car.location || ''}</p>
+
+                        ${canSeeDetails ? `
+                            <p class="text-2xl font-black text-[#003399] mb-4">${Number(car.price).toLocaleString()} ETB</p>
+                            <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+                                <p class="text-[10px] font-bold text-green-700 uppercase">${t.seller_contact}</p>
+                                <p class="text-lg font-black">${car.phone_number || t.no_phone}</p>
+                            </div>
+                        ` : `
+                            <div class="mb-4">
+                                <p class="text-2xl font-black blur-locked">XX,XXX,XXX ETB</p>
+                            </div>
+                            <button onclick="window.location.href='join.html'" class="w-full bg-[#003399] text-white font-black py-3 rounded-lg uppercase text-xs shadow-lg">
+                                ${t.unlock_btn}
+                            </button>
+                        `}
+                    </div>`;
+            });
+        }
+
+        async function loadMarketplace() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            let isPaid = false; let isAdmin = false;
+
+            if (user) {
+                const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+                if (profile) { isPaid = profile.is_paid; isAdmin = profile.is_admin; }
+            }
+
+            const { data: cars } = await supabaseClient.from('car_listings').select('*').order('created_at', { ascending: false });
+            const canSeeDetails = isAdmin || isPaid;
+
+            window.__lastCars = cars || [];
+            window.__canSeeDetails = canSeeDetails;
+
+            renderCars(window.__lastCars, canSeeDetails);
+        }
+
+        applyLanguage(currentLang);
+        loadMarketplace();
+    </script>
+</body>
+</html>
