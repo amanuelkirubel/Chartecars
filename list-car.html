@@ -9,7 +9,18 @@
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
 
-    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+    <!-- Shown while we check who's asking -->
+    <div id="checking" class="text-slate-400 font-bold text-sm">Checking access...</div>
+
+    <!-- Shown if not an admin -->
+    <div id="denied" class="hidden bg-white w-full max-w-md rounded-2xl shadow-xl p-10 text-center">
+        <h1 class="text-xl font-black text-slate-800 mb-2">Access Denied</h1>
+        <p class="text-slate-500 text-sm mb-6">This page is for Charte Cars admins only.</p>
+        <button onclick="window.location.href='index.html'" class="text-blue-600 font-bold text-xs hover:underline">← Back to Home</button>
+    </div>
+
+    <!-- The actual form, hidden until we confirm admin -->
+    <div id="adminForm" class="hidden bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
         <div class="bg-[#003399] p-6 text-white">
             <h1 class="text-xl font-bold italic">CHARTE <span class="text-blue-300">CARS</span> ADMIN</h1>
             <p class="text-xs opacity-70">Add a new car to the marketplace</p>
@@ -57,8 +68,36 @@
 
     <script>
         const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
-        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1'; 
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1';
         const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        async function checkAdminAccess() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            if (!user) {
+                // Not logged in at all — send to login, then back here
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .single();
+
+            document.getElementById('checking').classList.add('hidden');
+
+            if (error || !profile || !profile.is_admin) {
+                document.getElementById('denied').classList.remove('hidden');
+                return;
+            }
+
+            // Confirmed admin — show the form
+            document.getElementById('adminForm').classList.remove('hidden');
+        }
+
+        checkAdminAccess();
 
         const form = document.getElementById('addCarForm');
         const btn = document.getElementById('submitBtn');
