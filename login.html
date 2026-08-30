@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Charte Cars Ethiopia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen p-6">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 text-center">
+        <h1 class="text-4xl font-black text-[#003399] italic tracking-tighter mb-10">CHARTE <span class="text-blue-400">CARS</span></h1>
+        <form id="loginForm" class="space-y-5 text-left">
+            <input type="email" id="email" placeholder="Email Address" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" required>
+            <input type="password" id="password" placeholder="Password" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" required>
+            <button type="submit" id="submitBtn" class="w-full bg-[#003399] text-white font-black py-5 rounded-2xl shadow-xl hover:bg-blue-800 transition uppercase tracking-widest text-xs">Log In / Sign Up</button>
+        </form>
+        <button onclick="window.location.href='index.html'" class="mt-8 text-blue-600 font-bold text-xs hover:underline">← Back to Home</button>
+    </div>
+
+    <script>
+        const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1'; 
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = 'AUTHENTICATING...';
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            let { data: signInData, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                // Login failed — likely means this is a new account, so try signing up instead
+                let { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+
+                if (signUpError) {
+                    alert(signUpError.message);
+                    btn.innerText = 'Log In / Sign Up';
+                } else if (signUpData.user && !signUpData.session) {
+                    // Account created but needs email confirmation before login works
+                    alert("Account created! Please check your email and click the confirmation link before logging in.");
+                    btn.innerText = 'Log In / Sign Up';
+                } else {
+                    // Some Supabase configs auto-confirm/sign in immediately
+                    window.location.href = 'index.html';
+                }
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
