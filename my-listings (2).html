@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charte Cars | My Listings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-6">
+
+    <div id="checking" class="text-center text-slate-400 font-bold text-sm mt-20">Checking access...</div>
+
+    <div id="denied" class="hidden max-w-md mx-auto bg-white rounded-2xl shadow-xl p-10 text-center mt-20">
+        <h1 class="text-xl font-black text-slate-800 mb-2">Log In Required</h1>
+        <p class="text-slate-500 text-sm mb-6">Please log in to manage your listings.</p>
+        <button onclick="window.location.href='login.html'" class="text-blue-600 font-bold text-xs hover:underline">Go to Login</button>
+    </div>
+
+    <div id="myListings" class="hidden max-w-3xl mx-auto">
+        <div class="flex items-center justify-between mb-4">
+            <button onclick="window.location.href='index.html'" class="text-blue-600 font-bold text-xs hover:underline flex items-center">
+                ← Back to Home
+            </button>
+        </div>
+        <div class="flex items-center justify-between mb-8">
+            <h1 id="pageTitle" class="text-2xl font-black text-slate-800">My Listings</h1>
+            <a href="list-car.html" class="bg-[#003399] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase">+ List Another Car</a>
+        </div>
+        <div id="listings-container" class="space-y-6"></div>
+        <p id="empty-msg" class="hidden text-center text-slate-400 font-semibold py-10">You haven't listed any cars yet.</p>
+    </div>
+
+    <script>
+        const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1';
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        let currentUserId = null;
+        let isAdmin = false;
+
+        async function loadMyListings() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            document.getElementById('checking').classList.add('hidden');
+
+            if (!user) {
+                document.getElementById('denied').classList.remove('hidden');
+                return;
+            }
+            currentUserId = user.id;
+
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .single();
+
+            isAdmin = !!(profile && profile.is_admin);
+
+            // Admins see EVERY listing on the site; regular sellers see only their own
+            let query = supabaseClient.from('car_listings').select('*').order('created_at', { ascending: false });
+            if (!isAdmin) {
+                query = query.eq('seller_id', user.id);
+            }
+            const { data: cars, error } = await query;
+
+            document.getElementById('pageTitle').innerText = isAdmin ? 'All Listings (Admin)' : 'My Listings';
+            document.getElementById('myListings').classList.remove('hidden');
+            const container = document.getElementById('listings-container');
+            container.innerHTML = '';
+
+            if (!cars || cars.length === 0) {
+                document.getElementById('empty-msg').classList.remove('hidden');
+                return;
+            }
+
+            cars.forEach(car => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-6';
+                card.innerHTML = `
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Car Name</label>
+                            <input type="text" value="${car.name || ''}" data-field="name" data-id="${car.id}" class="edit-input w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Price (ETB)</label>
+                            <input type="number" value="${car.price || ''}" data-field="price" data-id="${car.id}" class="edit-input w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Image URL</label>
+                            <input type="url" value="${car.image_url || ''}" data-field="image_url" data-id="${car.id}" class="edit-input w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Location</label>
+                            <input type="text" value="${car.location || ''}" data-field="location" data-id="${car.id}" class="edit-input w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Description</label>
+                            <textarea data-field="description" data-id="${car.id}" class="edit-input w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" rows="3">${car.description || ''}</textarea>
+                        </div>
+                    </div>
+
+                    ${isAdmin ? `<p class="text-[10px] text-slate-400 mt-2">Seller ID: ${car.seller_id || 'unknown'}</p>` : ''}
+
+                    <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t">
+                        <label class="flex items-center space-x-2 text-xs font-bold text-yellow-600">
+                            <input type="checkbox" class="toggle-flag" data-field="is_urgent" data-id="${car.id}" ${car.is_urgent ? 'checked' : ''}>
+                            <span>URGENT</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-xs font-bold text-red-600">
+                            <input type="checkbox" class="toggle-flag" data-field="is_sold" data-id="${car.id}" ${car.is_sold ? 'checked' : ''}>
+                            <span>SOLD</span>
+                        </label>
+                        <button class="save-btn ml-auto bg-[#003399] text-white font-bold text-xs uppercase px-6 py-3 rounded-lg" data-id="${car.id}">
+                            Save Changes
+                        </button>
+                        ${isAdmin ? `
+                            <button class="delete-btn bg-red-50 text-red-600 font-bold text-xs uppercase px-4 py-3 rounded-lg border border-red-200" data-id="${car.id}">
+                                Delete
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Wire up save buttons
+            document.querySelectorAll('.save-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    const updates = {};
+                    document.querySelectorAll(`.edit-input[data-id="${id}"]`).forEach(input => {
+                        updates[input.dataset.field] = input.value;
+                    });
+                    document.querySelectorAll(`.toggle-flag[data-id="${id}"]`).forEach(cb => {
+                        updates[cb.dataset.field] = cb.checked;
+                    });
+
+                    btn.innerText = 'Saving...';
+
+                    // Admins can update ANY listing; sellers only their own (RLS also enforces this server-side)
+                    let updateQuery = supabaseClient.from('car_listings').update(updates).eq('id', id);
+                    if (!isAdmin) {
+                        updateQuery = updateQuery.eq('seller_id', currentUserId);
+                    }
+                    const { error } = await updateQuery;
+
+                    btn.innerText = error ? 'Error!' : 'Saved ✓';
+                    setTimeout(() => { btn.innerText = 'Save Changes'; }, 1500);
+                    if (error) alert('Error saving: ' + error.message);
+                });
+            });
+
+            // Wire up delete buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (!confirm('Delete this listing permanently?')) return;
+                    const id = btn.dataset.id;
+
+                    let deleteQuery = supabaseClient.from('car_listings').delete().eq('id', id);
+                    if (!isAdmin) {
+                        deleteQuery = deleteQuery.eq('seller_id', currentUserId);
+                    }
+                    const { error } = await deleteQuery;
+
+                    if (error) { alert('Error: ' + error.message); }
+                    else { loadMyListings(); }
+                });
+            });
+        }
+
+        loadMyListings();
+    </script>
+</body>
+</html>
