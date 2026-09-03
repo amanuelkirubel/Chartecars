@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Charte Cars Ethiopia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen p-6">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 text-center">
+        <h1 class="text-4xl font-black text-[#003399] italic tracking-tighter mb-10">CHARTE <span class="text-blue-400">CARS</span></h1>
+        <form id="loginForm" class="space-y-5 text-left">
+            <input type="email" id="email" placeholder="Email Address" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" required>
+            <input type="password" id="password" placeholder="Password" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" required>
+            <button type="submit" id="submitBtn" class="w-full bg-[#003399] text-white font-black py-5 rounded-2xl shadow-xl hover:bg-blue-800 transition uppercase tracking-widest text-xs">Log In</button>
+            <p id="loginMsg" class="text-xs text-center font-semibold"></p>
+            <div class="text-center pt-2 border-t">
+                <p class="text-xs text-slate-400 mt-3 mb-2">New here?</p>
+                <button type="button" id="registerBtn" class="w-full bg-slate-100 text-[#003399] font-black py-4 rounded-2xl hover:bg-slate-200 transition uppercase tracking-widest text-xs">Create Account</button>
+            </div>
+        </form>
+        <button onclick="window.location.href='index.html'" class="mt-8 text-blue-600 font-bold text-xs hover:underline">← Back to Home</button>
+    </div>
+
+    <script>
+        const SB_URL = 'https://oilalzzaieqrgclsmdrh.supabase.co';
+        const SB_KEY = 'sb_publishable_HdfQonK2Jv-rLyi9E4uPxw_pCa-1pt1'; 
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const msg = document.getElementById('loginMsg');
+            msg.innerText = '';
+            btn.innerText = 'LOGGING IN...';
+            btn.disabled = true;
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            let { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+            btn.disabled = false;
+            btn.innerText = 'Log In';
+
+            if (error) {
+                if (error.message.toLowerCase().includes('email not confirmed')) {
+                    msg.innerText = "Your email isn't confirmed yet — check your inbox for the confirmation link.";
+                } else {
+                    msg.innerText = "Incorrect email or password. New here? Use Create Account below.";
+                }
+                msg.className = 'text-xs text-center font-semibold text-red-600';
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('registerBtn');
+            const msg = document.getElementById('loginMsg');
+            msg.innerText = '';
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                msg.innerText = 'Enter an email and password first, then tap Create Account.';
+                msg.className = 'text-xs text-center font-semibold text-red-600';
+                return;
+            }
+
+            btn.innerText = 'CREATING ACCOUNT...';
+            btn.disabled = true;
+
+            let { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+
+            btn.disabled = false;
+            btn.innerText = 'Create Account';
+
+            if (signUpError) {
+                msg.innerText = signUpError.message;
+                msg.className = 'text-xs text-center font-semibold text-red-600';
+            } else if (signUpData.user && !signUpData.session) {
+                msg.innerText = "Almost done! Check your email and click the confirmation link, then come back and Log In above.";
+                msg.className = 'text-xs text-center font-semibold text-green-600';
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
